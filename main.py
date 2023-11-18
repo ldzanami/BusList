@@ -3,6 +3,8 @@ from aiogram.filters import Command
 from aiogram.types import Message
 import aiogram
 import requests
+import BusClass
+import json
 
 API_URL = 'https://api.telegram.org/bot'
 BOT_TOKEN = '6416264890:AAHOB38AT9IESfOC-decd5NjcO_n-uipURQ'
@@ -73,4 +75,4 @@ dp.message.register(anime_command, Command(commands=["anime", "a"]))
 dp.message.register(any_message)
 
 if __name__ == '__main__':
-    dp.run_polling(bot) 
+    dp.run_polling(bot)
