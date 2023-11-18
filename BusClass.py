@@ -1,6 +1,7 @@
-from datetime import datetime
+import imports
+
 class Bus():
-    def __init__(self : Bus, ras : dict, city : str, station : str, side : str, num : str):
+    def __init__(self, ras : dict, city : str, station : str, side : str, num : str):
         self.ras = ras[city][station][side][num]
         self.city = city
         self.station = station
