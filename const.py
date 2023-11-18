@@ -4,3 +4,4 @@ API_CATS_URL = 'https://api.thecatapi.com/v1/images/search'
 API_WAIFU_URL = 'https://api.waifu.im/search'
 MY_ID = 1288933234
 FAIL_ANS = 'Что-то пошло не так и это что-то точно не в моём ботике'
+IGNORE_LIST = [914699416]
