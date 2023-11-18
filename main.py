@@ -75,7 +75,7 @@ def donothing(message : imports.Message):
 dp.message.register(start_command, imports.Command(commands=["start"]))
 dp.message.register(cats_command, imports.Command(commands=["cats", "c"]))
 dp.message.register(anime_command, imports.Command(commands=["anime", "a"]))
-dp.message.register(donothing)
+dp.message.register(any_message)
 
 if __name__ == '__main__':
     dp.run_polling(bot)
