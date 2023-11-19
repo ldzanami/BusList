@@ -32,7 +32,7 @@ class Bus():
             d = self.ras[str(nexth)][str(nextm)][0]
             nextm = str(nextm)
             if len(nextm) < 2: nextm = '0' + nextm
-            self.list_commands.append(f'''Следующий автобус {self.num} приедет в {nexth}:{nextm}
+            self.list_commands.append(f'''Следующий автобус {self.num} на остановке {self.station} приедет в {nexth}:{nextm}
         ---|Отклонение: {min(d)} {round(sum(d) / len(d), 2)} +{max(d)}|---''')
 
     async def print_one(self, smt):

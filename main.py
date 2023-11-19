@@ -40,8 +40,8 @@ async def any_message(message : imports.Message) -> None:
                         await bus.print_table()
                         length = len(bus.list_commands)
                         await bot.send_message(chat_id, bus.list_commands[-1], reply_markup=funcs.create_Inlinekeyboard(length - 1, bus.list_commands[:length - 1], inString=2, CallbackData='asdasdasd').as_markup())
-                    else: await choice_bus()
-                else: await choice_side()
+                    else: await choice_bus(message)
+                else: await choice_side(message)
             else: await choice_station(message)
         else: await choice_city(message)
 
@@ -92,14 +92,22 @@ async def donothing(message : imports.Message):
 async def choice_city(message : imports.Message):
     await message.answer("Выберите город", reply_markup=funcs.create_Replykeyboard(len(imports.const.ras.keys()), sorted(map(str, imports.const.ras.keys())), inString=2).as_markup(resize_keyboard=True))
 
+async def choice_station(message : imports.Message):
+    pass
+
+async def choice_side(message : imports.Message):
+    pass
+
+async def choice_bus(message : imports.Message):
+    pass
 
 async def ras_command(message : imports.Message):
     imports.const.USER_DATA[message.chat.id] = {
         "ischoice":True,
-        "city":"Tomsk",
-        "station":"Novosobornaya",
-        "side":"left_side",
-        "bus":"32lsk"
+        "city":None,
+        "station":None,
+        "side":None,
+        "bus":None
     }
     if await funcs.anti_spam(message):
         await choice_city(message)
