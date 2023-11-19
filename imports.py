@@ -7,6 +7,8 @@ import json
 from aiogram.types import ReplyKeyboardRemove, \
     ReplyKeyboardMarkup, KeyboardButton, \
     InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, \
+    InlineKeyboardBuilder
 from datetime import datetime
 import const
+from aiogram import F

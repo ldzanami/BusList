@@ -7,11 +7,12 @@ class Bus():
         self.station = station
         self.side = side
         self.num = num
+        self.list_commands = list()
 
-    def next(self):
+    async def next(self):
             num = self.num
             ras_keys_int = sorted(map(int, self.ras.keys()))
-            cur = datetime.now()
+            cur = imports.datetime.now()
             nexth = cur.hour
             nextm = None
             while nextm is None:
@@ -31,20 +32,19 @@ class Bus():
             d = self.ras[str(nexth)][str(nextm)][0]
             nextm = str(nextm)
             if len(nextm) < 2: nextm = '0' + nextm
-            print(f" ---|Следующий автобус {self.num} приедет в {nexth}:{nextm}|---\n\t  ---|Отклонение: {min(d)} {round(sum(d) / len(d), 2)} +{max(d)}|---")
+            self.list_commands.append(f'''Следующий автобус {self.num} приедет в {nexth}:{nextm}
+        ---|Отклонение: {min(d)} {round(sum(d) / len(d), 2)} +{max(d)}|---''')
 
-    def print_one(self, smt):
+    async def print_one(self, smt):
         for i in range(len(smt[1].keys())):
             mins = str(list(smt[1].keys())[i])
             if len(mins) < 2: mins = '0' + mins
-            print(f'''\t    ▏___________│__________│
-    \t    ▏   {smt[0]}:{mins.ljust(5)}│     {str(list(smt[1].values())[i][1]).ljust(5)}│''')
+            self.list_commands.append(f'{smt[0]}:{mins}')
+            self.list_commands.append(f'{list(smt[1].values())[i][1]}')
 
-    def print_table(self):
-        print(f'───┐\n{self.num}▕\n───┘\n')
-        print('\t    ________________________')
-        print("\t    ▏   время   │ пропуски │")
+    async def print_table(self):
+        self.list_commands.append("время")
+        self.list_commands.append("пропуски")
         for i in sorted(self.ras.items()):
-            self.print_one(i)
-        print('\t    ▏___________│__________│\n')
-        self.next()
+            await self.print_one(i)
+        await self.next()
