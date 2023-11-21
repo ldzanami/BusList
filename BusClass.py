@@ -29,22 +29,18 @@ class Bus():
                 if nextm is None and nexth in ras_keys_int:
                     nexth += 1
                 elif nextm is None and nexth > max(ras_keys_int): nexth = min(ras_keys_int)
-            d = self.ras[str(nexth)][str(nextm)][0]
             nextm = str(nextm)
             if len(nextm) < 2: nextm = '0' + nextm
-            self.list_commands.append(f'''Следующий автобус {self.num} на остановке {self.station} приедет в {nexth}:{nextm}
-        ---|Отклонение: {min(d)} {round(sum(d) / len(d), 2)} +{max(d)}|---''')
+            self.list_commands.append(f'Следующий автобус {self.num} на остановке {self.station} приедет в {nexth}:{nextm}')
 
     async def print_one(self, smt):
         for i in range(len(smt[1].keys())):
             mins = str(list(smt[1].keys())[i])
             if len(mins) < 2: mins = '0' + mins
             self.list_commands.append(f'{smt[0]}:{mins}')
-            self.list_commands.append(f'{list(smt[1].values())[i][1]}')
 
     async def print_table(self):
         self.list_commands.append("время")
-        self.list_commands.append("пропуски")
         for i in sorted(self.ras.items()):
             await self.print_one(i)
         await self.next()
