@@ -1,21 +1,4 @@
 import imports
-class Anti_Spam(imports.BaseFilter):
-    def __init__(self):
-        pass
-
-    async def __call__(self, message : imports.Message):
-        if message.from_user.id in imports.const.ADMINS: return True
-        time_mes_last, chat_id = message.date.minute * 60 + message.date.second, message.chat.id
-        if chat_id in imports.const.ANTI_SPAM_DICT:
-            if time_mes_last - imports.const.ANTI_SPAM_DICT[chat_id] >= 2:
-                imports.const.ANTI_SPAM_DICT[chat_id] = time_mes_last
-            else:
-                return False
-        else:
-            imports.const.ANTI_SPAM_DICT[chat_id] = time_mes_last
-            return True
-    
-    
 
 async def create_Replykeyboard(how_much : int, texts : list[str], inString=1) -> imports.ReplyKeyboardBuilder:
     builder = imports.ReplyKeyboardBuilder()
