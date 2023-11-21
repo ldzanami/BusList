@@ -1,18 +1,20 @@
+from datetime import datetime
 import imports
 
 class Bus():
-    def __init__(self, ras : dict, city : str, station : str, side : str, num : str):
+    def __init__(self, ras : dict, city : str, station : str, side : str, num : str, message : imports.Message):
         self.ras = ras[city][station][side][num]
         self.city = city
         self.station = station
         self.side = side
         self.num = num
         self.list_commands = list()
+        self.cur = datetime.now()
 
     async def next(self):
             num = self.num
             ras_keys_int = sorted(map(int, self.ras.keys()))
-            cur = imports.datetime.now()
+            cur = self.cur
             nexth = cur.hour
             nextm = None
             while nextm is None:
@@ -31,7 +33,7 @@ class Bus():
                 elif nextm is None and nexth > max(ras_keys_int): nexth = min(ras_keys_int)
             nextm = str(nextm)
             if len(nextm) < 2: nextm = '0' + nextm
-            self.list_commands.append(f'Следующий автобус {self.num} на остановке {self.station} приедет в {nexth}:{nextm}')
+            self.list_commands.append(f'Следующий автобус {self.num} на остановке {self.station} приедет в {nexth}:{nextm} по томскому времени')
 
     async def print_one(self, smt):
         for i in range(len(smt[1].keys())):

@@ -5,7 +5,6 @@ import aiogram
 import requests
 import json
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
-from datetime import datetime
 import const
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup

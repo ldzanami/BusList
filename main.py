@@ -23,7 +23,7 @@ async def start_command(message : imports.Message, state : imports.FSMContext):
 async def print_ras(message : imports.Message, state : imports.FSMContext):
     user = imports.const.USER_DATA[message.from_user.id]
     if imports.const.ras[user['city']][user['station']][user['side']][user['bus']]:
-        bus = BusClass.Bus(imports.const.ras, user['city'], user['station'], user['side'], user['bus'])
+        bus = BusClass.Bus(imports.const.ras, user['city'], user['station'], user['side'], user['bus'], message)
         await bus.print_table()
         keyboard = await funcs.create_Inlinekeyboard(len(bus.list_commands) - 1, bus.list_commands[:len(bus.list_commands) - 1], CallbackData="adadadad")
         await message.answer(bus.list_commands[-1], reply_markup=keyboard.as_markup())
