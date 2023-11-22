@@ -2,7 +2,7 @@ from datetime import datetime
 import imports
 
 class Bus():
-    def __init__(self, ras : dict, city : str, station : str, side : str, num : str, message : imports.Message):
+6416264890:AAFwKJoSbvvKGgCtliODcJXUin5Hyp0sO8g    def __init__(self, ras : dict, city : str, station : str, side : str, num : str, message : imports.Message):
         self.ras = ras[city][station][side][num]
         self.city = city
         self.station = station
