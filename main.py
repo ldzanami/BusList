@@ -5,6 +5,7 @@ from FSMClass import FSMChoiceBus
 
 bot = imports.Bot(token=imports.const.BOT_TOKEN)
 dp = imports.Dispatcher()
+ignore_inputs = ['/start', '/Добавить', '/Удалить', '/Выход', '/help', '/Расписание', '/Назад']
 
 @dp.message(imports.Command(commands='help'))
 async def help_command(message : imports.Message):
@@ -59,7 +60,7 @@ async def add_state(message : imports.Message, state : imports.FSMContext):
         await state.set_state(FSMChoiceBus.add_in_bus)
         await message.answer('Введите время прибытия на остановку (Пример: 12:53)')
 
-@dp.message(imports.F.text, imports.StateFilter(FSMChoiceBus.add_city, FSMChoiceBus.add_station, FSMChoiceBus.add_side, FSMChoiceBus.add_bus, FSMChoiceBus.add_in_bus))
+@dp.message(imports.F.text, lambda x: x.text not in ignore_inputs, imports.StateFilter(FSMChoiceBus.add_city, FSMChoiceBus.add_station, FSMChoiceBus.add_side, FSMChoiceBus.add_bus, FSMChoiceBus.add_in_bus))
 async def add(message : imports.Message, state : imports.FSMContext):
     what = None
     user = imports.const.USER_DATA[message.from_user.id]
@@ -87,14 +88,20 @@ async def add(message : imports.Message, state : imports.FSMContext):
             await message.answer('Длина названия должна быть не больше 120 символов')
 
     elif await state.get_state() == FSMChoiceBus.add_side:
-        if message.text.strip().capitalize() in ['Левая', 'Правая']: 
-            what = f'{user["city"]} {user["station"]} сторону'
-            rass = imports.const.ras[user["city"]][user['station']]
-            imports.const.ras[user['city']][user['station']][message.text.strip('\'\|",.\/:;`~-\+\=]\[{\}()]?><#@!$%^&* ').capitalize()] = imports.const.ras[user['city']][user['station']].get(message.text, dict())
+        if len(message.text) <= 120:
+            if message.text.strip().capitalize() in ['Левая', 'Правая']:
+                what = f'{user["city"]} {user["station"]} сторону'
+                rass = imports.const.ras[user["city"]][user['station']]
+                imports.const.ras[user['city']][user['station']][message.text.strip('\'\|",.\/:;`~-\+\=]\[{\}()]?><#@!$%^&* ').capitalize()] = imports.const.ras[user['city']][user['station']].get(message.text, dict())
+                await state.set_state(FSMChoiceBus.choice_side)
+                keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
+                await message.answer('Записал', reply_markup=keyboard.as_markup(resize_keyboard=True))
+            else: 
+                await state.set_state(FSMChoiceBus.choice_side)
+                await message.answer('Такой стороны не бывает(')
+        else: 
             await state.set_state(FSMChoiceBus.choice_side)
-            keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-            await message.answer('Записал', reply_markup=keyboard.as_markup(resize_keyboard=True))
-        else: await message.answer("*WRONG INPUT*")
+            await message.answer('Длина названия должна быть не больше 120 символов')
 
     elif await state.get_state() == FSMChoiceBus.add_bus:
         if len(message.text) <= 120:
