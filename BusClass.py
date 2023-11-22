@@ -24,7 +24,7 @@ class Bus():
                     else: nexth = min(ras_keys_int)
                 for i in self.ras[str(nexth)]:
                     i = int(i)
-                    if cur.hour == nexth and cur.minute <= i:
+                    if cur.hour == nexth and cur.minute <= i or nexth == min(self.ras) and nexth == max(self.ras):
                         nextm = i
                         break
                     elif cur.hour != nexth: nextm = i; break
