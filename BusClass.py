@@ -21,7 +21,7 @@ class Bus():
                 while nexth not in ras_keys_int:
                     if nexth < max(ras_keys_int):
                         nexth += 1
-                    else: nexth = min(ras_keys_int); nextm = min(sorted(map(int, self.ras[str(nexth)])))
+                    else: nexth = min(ras_keys_int); nextm = min(sorted(map(int, self.ras[str(nexth)].keys())))
                 for i in self.ras[str(nexth)]:
                     i = int(i)
                     if cur.hour == nexth and cur.minute <= i:
