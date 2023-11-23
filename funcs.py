@@ -17,3 +17,7 @@ async def create_Inlinekeyboard(how_much : int, texts : list[str], inString=1, C
 async def save_db(ras : dict):
     with open("db.json", "w", encoding="utf-8") as db:
         imports.json.dump(ras, db)
+
+async def save_users(users : dict):
+    with open("dbUsers.json", "w", encoding="utf-8") as dbUsers:
+        imports.json.dump(users, dbUsers)
