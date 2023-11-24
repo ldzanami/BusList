@@ -21,3 +21,8 @@ async def save_db(ras : dict):
 async def save_users(users : dict):
     with open("dbUsers.json", "w", encoding="utf-8") as dbUsers:
         imports.json.dump(users, dbUsers)
+
+def isbanned(message : imports.Message):
+    if str(message.from_user.id) in imports.const.users:
+        return imports.const.users[str(message.from_user.id)][0]
+    else: return True

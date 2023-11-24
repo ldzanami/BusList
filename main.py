@@ -8,369 +8,105 @@ dp = imports.Dispatcher()
 ads = ['/ABSOLUTE']
 ignore_inputs = ['/start', '/Добавить', '/Удалить', '/Выход', '/help', '/Расписание', '/Назад', '/BAN', '/UNBAN', '/MESSAGE'] + ads
 
-@dp.message(imports.Command(commands='ABSOLUTE'), lambda x: x.from_user.id in imports.const.ADMINS)
-async def v_potok(message : imports.Message, state : imports.FSMContext):
-    keyboard = await funcs.create_Replykeyboard(4, ['/BAN', '/UNBAN', '/MESSAGE', '/Выход'], inString=3)
-    await message.answer("Я АБСОЛЮТ, И ВИЖУ ВСЁ!", reply_markup=keyboard.as_markup(resize_keyboard=True))
-    await state.set_state(FSMChoiceBus.V_POTOKE_ABSOLUTE)
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='Выход'), ~imports.StateFilter(imports.default_state))
+async def exit(message : imports.Message, state : imports.FSMContext):
+    await imports.exit_command(message, state, imports.const.USER_DATA)
 
-@dp.message(imports.Command(commands='MESSAGE'), imports.StateFilter(FSMChoiceBus.V_POTOKE_ABSOLUTE))
-async def message_to_all(message : imports.Message, state : imports.FSMContext):
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='ABSOLUTE'), lambda x: x.from_user.id in imports.const.ADMINS)
+async def potok(message : imports.Message, state : imports.FSMContext):
+    await imports.v_potok(message, state)
+
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='MESSAGE'), imports.StateFilter(FSMChoiceBus.V_POTOKE_ABSOLUTE))
+async def say_state(message : imports.Message, state : imports.FSMContext):
     await message.answer("ДАВАЙ!")
     await state.set_state(FSMChoiceBus.MESSAGE)
 
-@dp.message(imports.F.text, lambda x: x.text not in ignore_inputs, imports.StateFilter(FSMChoiceBus.MESSAGE))
+@dp.message(lambda x: funcs.isbanned(x), imports.F.text, lambda x: x.text not in ignore_inputs, imports.StateFilter(FSMChoiceBus.MESSAGE))
 async def say(message : imports.Message, state : imports.FSMContext):
     for i in imports.const.users.keys():
         await bot.send_message(i, message.text)
     await message.answer("ГОТОВО")
     await state.set_state(FSMChoiceBus.V_POTOKE_ABSOLUTE)
 
-@dp.message(imports.Command(commands='help'))
-async def help_command(message : imports.Message):
-    await message.answer('''Бот создан по приколу для удобства 1-го человека.
-Что он умеет? Бот умеет добавлять города (любые), остановки (любые), стороны (левая и правая) и да, я знаю что это не идентификатор для остановок, ведь от того как стоишь он меняется, но правая - это по ходу движения, левая - против движения, также может добавлять автобусы (любые) и время (добавляйте только время прибытия автобуса на ту или иную остановку и именно время ПРИБЫТИЯ, но даже так, не все автобусы ездят по расписанию, у некоторых оно плавающее. Огромная просьба не добавлять хуйни по-типу в города записать к примеру залупинск или ещё что-то, база данных на всех пользователей одна, так что бот создан для сознательных пользователей, также он умеет выводить расписание автобусов на определенной остановке, меню тут иерархическое, так что разобраться не сложно, для начала работы напишите /start. Ещё бот умеет удалять города/остановки/стороны/автобусы/время, но эта функция слишком опасна, так что ей могут пользоваться единицы.
-Написан на языке Python 3.11.5 с помощью библиотеки aiogram версии 3.20
-Created by @BblpoDokk (Idzanami)
-‼Если бот молчит, значит я его перезапустил, напишите /start - молчит, значит выключен‼''')
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='UNBAN'), imports.StateFilter(FSMChoiceBus.V_POTOKE_ABSOLUTE))
+async def unban_state(message : imports.Message, state : imports.FSMContext):
+    keyboard = await funcs.create_Replykeyboard(len(imports.const.users.keys()) + 1, list(imports.const.users.keys()) + ['/Выход'], inString=2)
+    await message.answer("Невозможно полностью восстановить то, что когда-то было разбито.", reply_markup=keyboard.as_markup(resize_keyboard=True))
+    await state.set_state(FSMChoiceBus.UNBAN)
 
-@dp.message(imports.CommandStart(), imports.StateFilter(imports.default_state, FSMChoiceBus.V_POTOKE_ABSOLUTE))
-async def start_command(message : imports.Message, state : imports.FSMContext):
-    if message.from_user.id in imports.const.ADMINS:
-        keyboard = await funcs.create_Replykeyboard(len(ads) + len(imports.const.ras.keys()) + 3, sorted(imports.const.ras.keys()) + ['/Добавить', '/Удалить', '/Выход'] + ads, inString=2)
-    else: keyboard = await funcs.create_Replykeyboard(len(imports.const.ras.keys()) + 3, sorted(imports.const.ras.keys()) + ['/Добавить', '/Удалить', '/Выход'], inString=2)
-    await  message.answer("Выберите город", reply_markup=keyboard.as_markup(resize_keyboard=True))
-    imports.const.USER_DATA[message.from_user.id] = {
-        'city': None,
-        'station': None,
-        'side': None,
-        'bus': None
-    }
-    # print(imports.const.USER_DATA)
-    await state.set_state(FSMChoiceBus.choice_city)
-    imports.const.users[str(message.from_user.id)] = imports.const.users.get(message.from_user.id, dict())
-    await funcs.save_users(imports.const.users)
+@dp.message(lambda x: funcs.isbanned(x), imports.F.text, imports.F.text.isdigit(), imports.StateFilter(FSMChoiceBus.UNBAN))
+async def unb(message : imports.Message, state : imports.FSMContext):
+    await imports.unban(message, state, imports.const.users)
 
-@dp.message(imports.Command(commands='Расписание'), imports.StateFilter(FSMChoiceBus.in_bus))
-async def print_ras(message : imports.Message, state : imports.FSMContext):
-    user = imports.const.USER_DATA[message.from_user.id]
-    if imports.const.ras[user['city']][user['station']][user['side']][user['bus']]:
-        bus = BusClass.Bus(imports.const.ras, user['city'], user['station'], user['side'], user['bus'], message)
-        await bus.print_table()
-        keyboard = await funcs.create_Inlinekeyboard(len(bus.list_commands) - 1, bus.list_commands[:len(bus.list_commands) - 1], CallbackData="adadadad")
-        await message.answer(bus.list_commands[-1], reply_markup=keyboard.as_markup())
-    else: await message.answer('Здесь пока пусто...')
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='BAN'), imports.StateFilter(FSMChoiceBus.V_POTOKE_ABSOLUTE))
+async def ban_state(message : imports.Message, state : imports.FSMContext):
+    keyboard = await funcs.create_Replykeyboard(len(imports.const.users.keys()) + 1, list(imports.const.users.keys()) + ['/Выход'], inString=2)
+    await message.answer("Вы посмели бросить мне вызов, поэтому просто заставить вас сидеть недостаточно. На колени!".upper(), reply_markup=keyboard.as_markup(resize_keyboard=True))
+    await state.set_state(FSMChoiceBus.BAN)
 
-@dp.message(imports.Command(commands='Добавить'), ~imports.StateFilter(imports.default_state))
-async def add_state(message : imports.Message, state : imports.FSMContext):
-    if await state.get_state() == FSMChoiceBus.choice_city:
-        await state.set_state(FSMChoiceBus.add_city)
-        await message.answer('Введите название города')
+@dp.message(lambda x: funcs.isbanned(x), imports.F.text, imports.F.text.isdigit(), imports.StateFilter(FSMChoiceBus.BAN))
+async def b(message : imports.Message, state : imports.FSMContext):
+    await imports.ban(message, state, imports.const.users, imports.const.MY_ID, imports.default_state)
 
-    elif await state.get_state() == FSMChoiceBus.choice_station:
-        await state.set_state(FSMChoiceBus.add_station)
-        await message.answer('Введите название остановки')
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='help'))
+async def help_command(message : imports.Message, state : imports.FSMContext):
+    await message.answer(imports.const.help_message)
 
-    elif await state.get_state() == FSMChoiceBus.choice_side:
-        await state.set_state(FSMChoiceBus.add_side)
-        await message.answer('Введите сторону (Левая/Правая)')
+@dp.message(lambda x: funcs.isbanned(x), imports.CommandStart(), imports.StateFilter(imports.default_state, FSMChoiceBus.V_POTOKE_ABSOLUTE))
+async def start(message : imports.Message, state : imports.FSMContext):
+    await imports.start_command(message, state, imports.const.ADMINS, imports.const.USER_DATA, imports.const.ras, imports.const.users, ads)
 
-    elif await state.get_state() == FSMChoiceBus.choice_bus:
-        await state.set_state(FSMChoiceBus.add_bus)
-        await message.answer('Введите номер автобуса (Примеры: 32 Пл.Южная; 112С; 23)')
-    
-    elif await state.get_state() == FSMChoiceBus.in_bus:
-        await state.set_state(FSMChoiceBus.add_in_bus)
-        await message.answer('Введите время прибытия на остановку (Пример: 12:53)')
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='Расписание'), imports.StateFilter(FSMChoiceBus.in_bus))
+async def printr(message : imports.Message, state : imports.FSMContext):
+    await imports.print_ras(message, state, imports.const.ras, imports.const.USER_DATA)
 
-@dp.message(imports.F.text, lambda x: x.text not in ignore_inputs, imports.StateFilter(FSMChoiceBus.add_city, FSMChoiceBus.add_station, FSMChoiceBus.add_side, FSMChoiceBus.add_bus, FSMChoiceBus.add_in_bus))
-async def add(message : imports.Message, state : imports.FSMContext):
-    what = None
-    user = imports.const.USER_DATA[message.from_user.id]
-    if await state.get_state() == FSMChoiceBus.add_city:
-        if len(message.text) <= 120:
-            what = 'город'
-            imports.const.ras[message.text.strip('\'\|",.\/:;`~-\+\=]\[{\}()]?><#@!$%^&* ')] = imports.const.ras.get(message.text, dict())
-            await state.set_state(FSMChoiceBus.choice_city)
-            if message.from_user.id in imports.const.ADMINS:
-                keyboard = await funcs.create_Replykeyboard(len(ads) + len(imports.const.ras.keys()) + 3, sorted(imports.const.ras.keys()) + ['/Добавить', '/Удалить', '/Выход'] + ads, inString=2)
-            else: keyboard = await funcs.create_Replykeyboard(len(imports.const.ras.keys()) + 3, sorted(imports.const.ras.keys()) + ['/Добавить', '/Удалить', '/Выход'], inString=2)
-            await message.answer('Записал', reply_markup=keyboard.as_markup(resize_keyboard=True))
-        else: 
-            await state.set_state(FSMChoiceBus.choice_city)
-            await message.answer('Длина названия должна быть не больше 120 символов')
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='Добавить'), ~imports.StateFilter(imports.default_state))
+async def addst(message : imports.Message, state : imports.FSMContext):
+    await imports.add_state(message, state)
 
-    elif await state.get_state() == FSMChoiceBus.add_station:
-        if len(message.text) <= 120:
-            what = f'{user["city"]} остановку'
-            rass = imports.const.ras[user['city']]
-            imports.const.ras[user['city']][message.text.strip('\'\|",.\/:;`~-\+\=]\[{\}()]?><#@!$%^&* ')] = imports.const.ras[user['city']].get(message.text, dict())
-            await state.set_state(FSMChoiceBus.choice_station)
-            if message.from_user.id in imports.const.ADMINS:
-                keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-            else: keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-            await message.answer('Записал', reply_markup=keyboard.as_markup(resize_keyboard=True))
-        else: 
-            await state.set_state(FSMChoiceBus.choice_station)
-            await message.answer('Длина названия должна быть не больше 120 символов')
+@dp.message(lambda x: funcs.isbanned(x), imports.F.text, lambda x: x.text not in ignore_inputs, imports.StateFilter(FSMChoiceBus.add_city, FSMChoiceBus.add_station, FSMChoiceBus.add_side, FSMChoiceBus.add_bus, FSMChoiceBus.add_in_bus))
+async def a(message : imports.Message, state : imports.FSMContext):
+    await imports.add(message, state, imports.const.USER_DATA, imports.const.ras, imports.const.ADMINS, ads, imports.const.MY_ID, bot)
 
-    elif await state.get_state() == FSMChoiceBus.add_side:
-        if len(message.text) <= 120:
-            if message.text.strip().capitalize() in ['Левая', 'Правая']:
-                what = f'{user["city"]} {user["station"]} сторону'
-                rass = imports.const.ras[user["city"]][user['station']]
-                imports.const.ras[user['city']][user['station']][message.text.strip('\'\|",.\/:;`~-\+\=]\[{\}()]?><#@!$%^&* ').capitalize()] = imports.const.ras[user['city']][user['station']].get(message.text, dict())
-                await state.set_state(FSMChoiceBus.choice_side)
-                if message.from_user.id in imports.const.ADMINS:
-                    keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-                else: keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-                await message.answer('Записал', reply_markup=keyboard.as_markup(resize_keyboard=True))
-            else: 
-                await state.set_state(FSMChoiceBus.choice_side)
-                await message.answer('Такой стороны не бывает(')
-        else: 
-            await state.set_state(FSMChoiceBus.choice_side)
-            await message.answer('Длина названия должна быть не больше 120 символов')
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='Назад'), ~imports.StateFilter(imports.default_state, FSMChoiceBus.choice_city))
+async def bck(message : imports.Message, state : imports.FSMContext):
+    await imports.back(message, state, imports.const.USER_DATA, imports.const.ras, imports.const.ADMINS, ads)
 
-    elif await state.get_state() == FSMChoiceBus.add_bus:
-        if len(message.text) <= 120:
-            what = f'{user["city"]} {user["station"]} {user["side"]} автобус'
-            rass = imports.const.ras[user['city']][user['station']][user['side']]
-            imports.const.ras[user['city']][user['station']][user['side']][message.text.strip('\'\|",.\/:;`~-\+\=]\[{\}()]?><#@!$%^&* ')] = imports.const.ras[user['city']][user['station']][user['side']].get(message.text, dict())
-            await state.set_state(FSMChoiceBus.choice_bus)
-            if message.from_user.id in imports.const.ADMINS:
-                keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-            else: keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-            await message.answer('Записал', reply_markup=keyboard.as_markup(resize_keyboard=True))
-        else: 
-            await state.set_state(FSMChoiceBus.choice_bus)
-            await message.answer('Длина названия должна быть не больше 120 символов')
+@dp.message(lambda x: funcs.isbanned(x), lambda x: x.from_user.id in imports.const.ADMINS, imports.Command(commands="Удалить"), ~imports.StateFilter(imports.default_state, FSMChoiceBus.add_city, FSMChoiceBus.add_station, FSMChoiceBus.add_side, FSMChoiceBus.add_bus, FSMChoiceBus.add_in_bus))
+async def del_state(message : imports.Message, state : imports.FSMContext):
+    await imports.delete_state(message, state)
 
-    elif await state.get_state() == FSMChoiceBus.add_in_bus:
-        hour = message.text.strip().split(':')
-        if len(hour) == 2 and len(hour[0]) == 2 and len(hour[1]) == 2 and hour[0].isalnum() and hour[1].isalnum() and 0 <= int(hour[0]) <= 23 and 0 <= int(hour[1]) <= 59:
-            hour = list(map(lambda x: str(int(x)), hour))
-            rass = imports.const.ras[user['city']][user['station']][user['side']][user['bus']]
-            imports.const.ras[user['city']][user['station']][user['side']][user['bus']][hour[0]] = imports.const.ras[user['city']][user['station']][user['side']][user['bus']].get(hour[0], dict())
-            if hour[1] not in imports.const.ras[user['city']][user['station']][user['side']][user['bus']][hour[0]]:
-                imports.const.ras[user['city']][user['station']][user['side']][user['bus']][hour[0]][hour[1]] = []
-            await message.answer('Добавил')
-            what = f'{user["city"]} {user["station"]} {user["side"]} {user["bus"]} время'
-            await state.set_state(FSMChoiceBus.in_bus)
-        else:
-            await state.set_state(FSMChoiceBus.in_bus)
-            await message.answer("Введено неверное время")
-    await funcs.save_db(imports.const.ras)
-    await bot.send_message(imports.const.MY_ID, f'Пользователь: {message.from_user.username} {message.from_user.first_name} {message.from_user.last_name} {message.from_user.id} добавил {what} {message.text}')
-
-@dp.message(imports.Command(commands='Выход'), ~imports.StateFilter(imports.default_state))
-async def exit_command(message : imports.Message, state : imports.FSMContext):
-    keyboard = await funcs.create_Replykeyboard(2, ['/start', '/help'], inString=2)
-    await message.answer('*Выход*', reply_markup=keyboard.as_markup(resize_keyboard=True))
-    imports.const.USER_DATA.pop(message.from_user.id)
-    # print(imports.const.USER_DATA)
-    await state.clear()
-
-@dp.message(imports.Command(commands='Назад'), ~imports.StateFilter(imports.default_state, FSMChoiceBus.choice_city))
-async def back(message : imports.Message, state : imports.FSMContext):
-    if await state.get_state() == FSMChoiceBus.choice_station:
-        user = imports.const.USER_DATA[message.from_user.id]
-        rass = imports.const.ras
-        imports.const.USER_DATA[message.from_user.id]['city'] = None
-        if message.from_user.id in imports.const.ADMINS:
-            keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 3, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Выход'] + ads, inString=2)
-        else: keyboard = await funcs.create_Replykeyboard(len(rass) + 3, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Выход'], inString=2)
-        await message.answer("*Назад*", reply_markup=keyboard.as_markup(resize_keyboard=True))
-        await state.set_state(FSMChoiceBus.choice_city)
-        # print(imports.const.USER_DATA)
-
-    elif await state.get_state() == FSMChoiceBus.choice_side:
-        user = imports.const.USER_DATA[message.from_user.id]
-        rass = imports.const.ras[user['city']]
-        imports.const.USER_DATA[message.from_user.id]['station'] = None
-        if message.from_user.id in imports.const.ADMINS:
-            keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-        else: keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-        await message.answer("*Назад*", reply_markup=keyboard.as_markup(resize_keyboard=True))
-        await state.set_state(FSMChoiceBus.choice_station)
-        # print(imports.const.USER_DATA)
-
-    elif await state.get_state() == FSMChoiceBus.choice_bus:
-        user = imports.const.USER_DATA[message.from_user.id]
-        rass = imports.const.ras[user["city"]][user['station']]
-        imports.const.USER_DATA[message.from_user.id]['side'] = None
-        if message.from_user.id in imports.const.ADMINS:
-            keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-        else: keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-        await message.answer("*Назад*", reply_markup=keyboard.as_markup(resize_keyboard=True))
-        await state.set_state(FSMChoiceBus.choice_side)
-        # print(imports.const.USER_DATA)
-    
-    elif await state.get_state() == FSMChoiceBus.in_bus:
-        user = imports.const.USER_DATA[message.from_user.id]
-        rass = imports.const.ras[user["city"]][user['station']][user['side']]
-        imports.const.USER_DATA[message.from_user.id]['bus'] = None
-        if message.from_user.id in imports.const.ADMINS:
-            keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-        else: keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-        await message.answer("*Назад*", reply_markup=keyboard.as_markup(resize_keyboard=True))
-        await state.set_state(FSMChoiceBus.choice_bus)
-
-@dp.message(lambda x: x.from_user.id in imports.const.ADMINS, imports.Command(commands="Удалить"), ~imports.StateFilter(imports.default_state, FSMChoiceBus.add_city, FSMChoiceBus.add_station, FSMChoiceBus.add_side, FSMChoiceBus.add_bus, FSMChoiceBus.add_in_bus))
-async def delete_state(message : imports.Message, state : imports.FSMContext):
-    if await state.get_state() == FSMChoiceBus.choice_city:
-        await state.set_state(FSMChoiceBus.delete_city)
-        await message.answer('Выберите из списка элемент, который хотите удалить')
-
-    elif await state.get_state() == FSMChoiceBus.choice_station:
-        await state.set_state(FSMChoiceBus.delete_station)
-        await message.answer('Выберите из списка элемент, который хотите удалить')
-
-    elif await state.get_state() == FSMChoiceBus.choice_side:
-        await state.set_state(FSMChoiceBus.delete_side)
-        await message.answer('Выберите из списка элемент, который хотите удалить')
-
-    elif await state.get_state() == FSMChoiceBus.choice_bus:
-        await state.set_state(FSMChoiceBus.delete_bus)
-        await message.answer('Выберите из списка элемент, который хотите удалить')
-    
-    elif await state.get_state() == FSMChoiceBus.in_bus:
-        await state.set_state(FSMChoiceBus.delete_in_bus)
-        await message.answer('Впишите время, которое хотите удалить')
-
-@dp.message(imports.Command(commands='Удалить'), ~imports.StateFilter(imports.default_state, FSMChoiceBus.add_city, FSMChoiceBus.add_station, FSMChoiceBus.add_side, FSMChoiceBus.add_bus, FSMChoiceBus.add_in_bus))
-async def delete_wrong(message : imports.Message):
+@dp.message(lambda x: funcs.isbanned(x), imports.Command(commands='Удалить'), ~imports.StateFilter(imports.default_state, FSMChoiceBus.add_city, FSMChoiceBus.add_station, FSMChoiceBus.add_side, FSMChoiceBus.add_bus, FSMChoiceBus.add_in_bus))
+async def delete_wrong(message : imports.Message, state : imports.FSMContext):
     await message.answer("У вас недостаточно прав для этого(")
 
-@dp.message(imports.F.text, imports.StateFilter(FSMChoiceBus.delete_city, FSMChoiceBus.delete_station, FSMChoiceBus.delete_side, FSMChoiceBus.delete_bus, FSMChoiceBus.delete_in_bus))
-async def delete(message : imports.Message, state : imports.FSMContext):
-    what = None
-    user = imports.const.USER_DATA[message.from_user.id]
-    if await state.get_state() == FSMChoiceBus.delete_city:
-        if message.text in imports.const.ras:
-            what = 'город'
-            imports.const.ras.pop(message.text)
-            if message.from_user.id in imports.const.ADMINS:
-                keyboard = await funcs.create_Replykeyboard(len(ads) + len(imports.const.ras.keys()) + 3, sorted(imports.const.ras.keys()) + ['/Добавить', '/Удалить', '/Выход'] + ads, inString=2)
-            else: keyboard = await funcs.create_Replykeyboard(len(imports.const.ras.keys()) + 3, sorted(imports.const.ras.keys()) + ['/Добавить', '/Удалить', '/Выход'], inString=2)
-            await message.answer('Удалил', reply_markup=keyboard.as_markup(resize_keyboard=True))
-        else: await message.answer('Такого города в списке нет(')
-        await state.set_state(FSMChoiceBus.choice_city)
+@dp.message(lambda x: funcs.isbanned(x), imports.F.text, imports.StateFilter(FSMChoiceBus.delete_city, FSMChoiceBus.delete_station, FSMChoiceBus.delete_side, FSMChoiceBus.delete_bus, FSMChoiceBus.delete_in_bus))
+async def delet(message : imports.Message, state : imports.FSMContext):
+    await imports.delete(message, state, imports.const.USER_DATA, imports.const.ras, imports.const.ADMINS, ads, imports.const.MY_ID, bot)
 
-    elif await state.get_state() == FSMChoiceBus.delete_station:
-        rass = imports.const.ras[user['city']]
-        if message.text in rass:
-            what = f'{user["city"]} остановку'
-            imports.const.ras[user['city']].pop(message.text)
-            if message.from_user.id in imports.const.ADMINS:
-                keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-            else: keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-            await message.answer('Удалил', reply_markup=keyboard.as_markup(resize_keyboard=True))
-        else: await message.answer('Такой остановки в списке нет(')
-        await state.set_state(FSMChoiceBus.choice_station)
+@dp.message(lambda x: funcs.isbanned(x), imports.F.text, imports.StateFilter(FSMChoiceBus.choice_city))
+async def ch_city(message : imports.Message, state : imports.FSMContext):
+    await imports.choice_city(message, state, imports.const.ras, imports.const.USER_DATA, imports.const.ADMINS, ads)
 
-    elif await state.get_state() == FSMChoiceBus.delete_side:
-        rass = imports.const.ras[user["city"]][user['station']]
-        if message.text in rass:
-            what = f'{user["city"]} {user["station"]} сторону'
-            imports.const.ras[user['city']][user['station']].pop(message.text)
-            if message.from_user.id in imports.const.ADMINS:
-                keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-            else: keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-            await message.answer('Удалил', reply_markup=keyboard.as_markup(resize_keyboard=True))
-        else: await message.answer('Такой стороны в списке нет(')
-        await state.set_state(FSMChoiceBus.choice_side)
+@dp.message(lambda x: funcs.isbanned(x), imports.F.text, imports.StateFilter(FSMChoiceBus.choice_station))
+async def ch_station(message : imports.Message, state : imports.FSMContext):
+    await imports.choice_station(message, state, imports.const.ras, imports.const.USER_DATA, imports.const.ADMINS, ads)
 
-    elif await state.get_state() == FSMChoiceBus.delete_bus:
-        rass = imports.const.ras[user['city']][user['station']][user['side']]
-        if message.text in rass:
-            what = f'{user["city"]} {user["station"]} {user["side"]} автобус'
-            imports.const.ras[user['city']][user['station']][user['side']].pop(message.text)
-            if message.from_user.id in imports.const.ADMINS:
-                keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-            else: keyboard = await funcs.create_Replykeyboard(len(rass) + 4, sorted(rass.keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-            await message.answer('Удалил', reply_markup=keyboard.as_markup(resize_keyboard=True))
-        else: await message.answer('Такого автобуса в списке нет(')
-        await state.set_state(FSMChoiceBus.choice_bus)
+@dp.message(lambda x: funcs.isbanned(x), imports.F.text, imports.StateFilter(FSMChoiceBus.choice_side))
+async def ch_side(message : imports.Message, state : imports.FSMContext):
+    await imports.choice_side(message, state, imports.const.ras, imports.const.USER_DATA, imports.const.ADMINS, ads)
 
-    elif await state.get_state() == FSMChoiceBus.delete_in_bus:
-        hour = message.text.strip().split(':')
-        if len(hour) == 2 and len(hour[0]) == 2 and len(hour[1]) == 2 and hour[0].isalnum() and hour[1].isalnum() and 0 <= int(hour[0]) <= 23 and 0 <= int(hour[1]) <= 59:
-            hour = list(map(lambda x: str(int(x)), hour))
-            rass = imports.const.ras[user['city']][user['station']][user['side']][user['bus']]
-            if hour[0] in rass:
-                rass = imports.const.ras[user['city']][user['station']][user['side']][user['bus']][hour[0]]
-                if hour[1] in rass:
-                    imports.const.ras[user['city']][user['station']][user['side']][user['bus']][hour[0]].pop(hour[1])
-                    if not rass:
-                        imports.const.ras[user['city']][user['station']][user['side']][user['bus']].pop(hour[0])
-                    what = f'{user["city"]} {user["station"]} {user["side"]} {user["bus"]} время'
-                    await message.answer('Удалил')
-                else: await message.answer("Такого времени в списке нет")
-            else: await message.answer("Такого времени в списке нет")
-            await state.set_state(FSMChoiceBus.in_bus)
-        else:
-            await state.set_state(FSMChoiceBus.in_bus)
-            await message.answer("Такого времени в списке нет")
-    await funcs.save_db(imports.const.ras)
-    await bot.send_message(imports.const.MY_ID, f'Пользователь: {message.from_user.username} {message.from_user.first_name} {message.from_user.last_name} {message.from_user.id} удалил {what} {message.text}')
+@dp.message(lambda x: funcs.isbanned(x), imports.F.text, imports.StateFilter(FSMChoiceBus.choice_bus))
+async def ch_bus(message : imports.Message, state : imports.FSMContext):
+    await imports.choice_bus(message, state, imports.const.ras, imports.const.USER_DATA, imports.const.ADMINS, ads)
 
-@dp.message(imports.F.text, imports.StateFilter(FSMChoiceBus.choice_city))
-async def choice_city(message : imports.Message, state : imports.FSMContext):
-    rass = imports.const.ras
-    if message.text in rass:
-        imports.const.USER_DATA[message.from_user.id]["city"] = message.text
-        # print(imports.const.USER_DATA)
-        await state.set_state(FSMChoiceBus.choice_station)
-        if message.from_user.id in imports.const.ADMINS:
-            keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass[message.text]) + 4, sorted(rass[message.text].keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-        else: keyboard = await funcs.create_Replykeyboard(len(rass[message.text]) + 4, sorted(rass[message.text].keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-        await message.answer("Выберите остановку", reply_markup=keyboard.as_markup(resize_keyboard=True))
-    else: await message.answer("Такого города в списке нет(")
-
-@dp.message(imports.F.text, imports.StateFilter(FSMChoiceBus.choice_station))
-async def choice_station(message : imports.Message, state : imports.FSMContext):
-    rass = imports.const.ras[imports.const.USER_DATA[message.from_user.id]['city']]
-    if message.text in rass:
-        imports.const.USER_DATA[message.from_user.id]['station'] = message.text
-        # print(imports.const.USER_DATA)
-        await state.set_state(FSMChoiceBus.choice_side)
-        if message.from_user.id in imports.const.ADMINS:
-            keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass[message.text]) + 4, sorted(rass[message.text].keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-        else: keyboard = await funcs.create_Replykeyboard(len(rass[message.text]) + 4, sorted(rass[message.text].keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-        await message.answer('Выберите сторону', reply_markup=keyboard.as_markup(resize_keyboard=True))
-    else: await message.answer("Такой остановки в списке нет(")
-
-@dp.message(imports.F.text, imports.StateFilter(FSMChoiceBus.choice_side))
-async def choice_side(message : imports.Message, state : imports.FSMContext):
-    user = imports.const.USER_DATA[message.from_user.id]
-    rass = imports.const.ras[user["city"]][user['station']]
-    if message.text in rass:
-        imports.const.USER_DATA[message.from_user.id]['side'] = message.text
-        # print(imports.const.USER_DATA)
-        await state.set_state(FSMChoiceBus.choice_bus)
-        if message.from_user.id in imports.const.ADMINS:
-            keyboard = await funcs.create_Replykeyboard(len(ads) + len(rass[message.text]) + 4, sorted(rass[message.text].keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-        else: keyboard = await funcs.create_Replykeyboard(len(rass[message.text]) + 4, sorted(rass[message.text].keys()) + ['/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-        await message.answer('Выберите автобус', reply_markup=keyboard.as_markup(resize_keyboard=True))
-    else: await message.answer('Такой стороны нет(')
-
-@dp.message(imports.F.text, imports.StateFilter(FSMChoiceBus.choice_bus))
-async def choice_bus(message : imports.Message, state : imports.FSMContext):
-    user = imports.const.USER_DATA[message.from_user.id]
-    rass = imports.const.ras[user["city"]][user['station']][user['side']]
-    if message.text in rass:
-        imports.const.USER_DATA[message.from_user.id]['bus'] = message.text
-        await state.set_state(FSMChoiceBus.in_bus)
-        if message.from_user.id in imports.const.ADMINS:
-            keyboard = await funcs.create_Replykeyboard(len(ads) + 5, ['/Расписание', '/Добавить', '/Удалить', '/Назад', '/Выход'] + ads, inString=2)
-        else: keyboard = await funcs.create_Replykeyboard(5, ['/Расписание', '/Добавить', '/Удалить', '/Назад', '/Выход'], inString=2)
-        await message.answer('Нашёл', reply_markup=keyboard.as_markup(resize_keyboard=True))
-    else: await message.answer("Такого автобуса в списке нет(")
-
-@dp.message()
+@dp.message(lambda x: funcs.isbanned(x))
 async def any(message : imports.Message, state : imports.FSMContext):
     pass
+
+@dp.message(lambda x: not funcs.isbanned(x))
+async def ban_message(message : imports.Message, state : imports.FSMContext):
+    await message.answer("🚫ВАС ЗАБАНИЛИ🚫")
 
 if __name__ == "__main__":
     dp.run_polling(bot)

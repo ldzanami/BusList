@@ -18,3 +18,5 @@ class FSMChoiceBus(imports.StatesGroup):
     delete_in_bus = imports.State()
     V_POTOKE_ABSOLUTE = imports.State()
     MESSAGE = imports.State()
+    BAN = imports.State()
+    UNBAN = imports.State()
