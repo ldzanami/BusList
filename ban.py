@@ -1,7 +1,10 @@
 from FSMClass import FSMChoiceBus
 import funcs
 
-async def ban(message, state, users, MY_ID, default_state):
+async def ban(message, state, users, MY_ID, default_state, ADMINS):
+    if str(message.from_user.id) == message.text or message.text in list(map(str, ADMINS)) and message.from_user.id != MY_ID:
+        await message.answer('Это френдли фаер - огонь по своим...')
+        return
     if str(MY_ID) == message.text:
         users[str(message.from_user.id)][0] = 0
         await message.answer("ГЛУПЕЦ, ВОЗОМНИВШИЙ СЕБЯ БОГОМ, ЕДИНСТВЕННЫЙ, КТО МОЖЕТ ПОБЕДИТЬ МЕНЯ - ЭТО Я САМ!!!")
