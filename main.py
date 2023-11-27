@@ -29,10 +29,10 @@ async def say_state(message : imports.Message, state : imports.FSMContext):
 
 
 
-@dp.message(lambda x: funcs.isbanned(x), imports.F.text, lambda x: x.text not in ignore_inputs, imports.StateFilter(FSMChoiceBus.MESSAGE))
+@dp.message(lambda x: funcs.isbanned(x), lambda x: x or x.text and x.text not in ignore_inputs, imports.StateFilter(FSMChoiceBus.MESSAGE))
 async def say(message : imports.Message, state : imports.FSMContext):
     for i in imports.const.users.keys():
-        await bot.send_message(i, message.text)
+        await message.send_copy(i)
     await message.answer("ГОТОВО")
     await state.set_state(FSMChoiceBus.V_POTOKE_ABSOLUTE)
 
